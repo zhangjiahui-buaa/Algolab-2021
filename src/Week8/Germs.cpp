@@ -21,7 +21,7 @@ int number(Triangulation& t, long time){
     return result;
 }
 int find_time(Triangulation&t, int die_number){
-    int left = 0, right = INT_MAX;
+    int left = 0, right = 1024*8;
     while(left < right){
         int pivot = (left+right)/2;
         int num = number(t, pivot);
