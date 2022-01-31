@@ -1,8 +1,11 @@
-#include "CGAL/Quadratic_functions.h"
-#include "CGAL/Quadratic_models.h"
+///3
+#include "CGAL/QP_functions.h"
+#include "CGAL/QP_models.h"
 #include "CGAL/Gmpz.h"
 #include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/Delaunay_triangulation_2.h"
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
 typedef K::Point_2 Point;
 typedef int IT;
 typedef CGAL::Gmpz ET;
@@ -34,10 +37,12 @@ void testcase() {
     int n,m,c; std::cin >> n >> m >> c;
     Program lp(CGAL::SMALLER, true, 0, false, 0);
     std::vector<ware_type> warehouse;
+    std::vector<Point> pts;
     int cons = 0;
     for(int i=0; i<n; i++){
         int x,y,s,a;std::cin >> x >> y >> s >> a;
-        warehouse.emplace_back({x,y,s,a,0,-1});
+        warehouse.push_back({x,y,s,a,0,-1});
+        pts.push_back(Point(x,y));
         for(int j=0; j<m; j++){
             lp.set_a(i*m+j, cons, 1);
         }
@@ -46,7 +51,8 @@ void testcase() {
     std::vector<stad_type> stadium;
     for(int i=0; i<m; i++){
         int x,y,d,u;std::cin >> x >> y >> d >> u;
-        stadium.emplace_back({x,y,d,u,0,-1});
+        stadium.push_back({x,y,d,u,0,-1});
+        pts.push_back(Point(x,y));
         for(int j=0; j<n; j++){
             lp.set_a(j*m+i, cons, 1);
         }
@@ -58,8 +64,11 @@ void testcase() {
         for(int j=0; j<n; j++){
             lp.set_a(j*m+i, cons, warehouse[j].alco);
         }
-        lp.set_b(cons++, u);
+        lp.set_b(cons++, 100*u);
     }
+
+    Triangulation t;
+    t.insert(pts.begin(), pts.end());
     std::vector<std::vector<int>> rev(n);
     for(int i=0; i<n; i++){
         for(int j=0; j<m; j++){
@@ -70,52 +79,50 @@ void testcase() {
     std::vector<contour_type> contour;
     for(int i=0; i<c; i++){
         int x,y,r;std::cin >> x >> y >> r;
-        contour.emplace_back({x,y,r});
-        for(int j=0; j<n; j++){
-            long dis = CGAL::squared_distance(Point(x,y), Point(warehouse[j].x, warehouse[j].y)); 
-            if(dis < (long)r*(long)r){
-                warehouse[j].contour_num++;
-                int tmp = warehouse[j].closest_contour; 
-                if(tmp == -1 || (r < contour[tmp].r && CGAL::squared_distance(Point(x,y), Point(contour[tmp].x, contour[tmp].y)) < (long)contour[tmp].r * (long)contour[tmp].r))
-                    warehouse[j].cloest_contour = i;
-            }
-        }
-        for(int j=0; j<m; j++){
-            long dis = CGAL::squared_distance(Point(x,y), Point(stadium[j].x, stadium[j].y)); 
-            if(dis < (long)r*(long)r){
-                stadium[j].contour_num++;
-                int tmp = stadium[j].closest_contour; 
-                if(tmp == -1 || (r < contour[tmp].r && CGAL::squared_distance(Point(x,y), Point(contour[tmp].x, contour[tmp].y)) < (long)contour[tmp].r * (long)contour[tmp].r))
-                    stadium[j].cloest_contour = i;
-            }
+        contour.push_back({x,y,r});
+    }
+    std::vector<contour_type> r_contour;
+    for(auto c: contour){
+        K::Point_2 p(c.x, c.y);
+        if(CGAL::squared_distance(p, t.nearest_vertex(p)->point()) < (long)c.r*(long)c.r){
+            r_contour.push_back(c);
         }
     }
+    std::vector<std::vector<int>> lines(n, std::vector<int>(m,0));
     for(int i=0; i<n; i++){
+        std::vector<bool> in(r_contour.size(), false);
+        for(int j=0;j<r_contour.size(); j++){
+            long r = r_contour[j].r;
+            Point con(r_contour[j].x, r_contour[j].y);
+            Point pt(warehouse[i].x, warehouse[i].y);
+            if(CGAL::squared_distance(con,pt) < r*r)
+                in[j] = true;
+        }
         for(int j=0; j<m; j++){
-            long dis = CGAL::squared_distance(Point(contour[warehouse[i]].x, contour[warehouse[i]].y), Point(contour[stadium[j]].x, contour[stadium[j]].y));
-            long r1 = contour[warehouse[i]].r;
-            long r2 = contour[stadium[j]].r;
-            int num;
-            if(dis >= (r1+r2)*(r1+r2)){
-                num = warehouse[i].contour_num + stadium[j].contour_num;
-            }else{
-                num = std::max(warehouse[i].contour_num, stadium[j].contour_num) - std::min(warehouse[i].contour_num, stadium[j].contour_num);
+            std::vector<bool> s_in(r_contour.size(), false);
+            for(int k=0; k<r_contour.size(); k++){
+                K::Point_2 ps(stadium[j].x, stadium[j].y);
+                K::Point_2 pc(r_contour[k].x, r_contour[k].y);
+                if(CGAL::squared_distance(ps,pc) < (long)r_contour[k].r * (long)r_contour[k].r)
+                    s_in[k] = true;
+                if(in[k] != s_in[k])
+                    lines[i][j]++;
             }
-            lp.set_c(i*m+j, num - 100*rev[i][j]);
+            lp.set_c(i*m+j, lines[i][j]-100*rev[i][j]);
         }
     }
     Solution s = CGAL::solve_linear_program(lp, ET());
     if(s.is_infeasible()) std::cout << "RIOT!\n";
-    else std::cout << std::floor(-CGAL::to_double(s.objective_value())/100) << "\n";
+    else std::cout << (int)std::floor(-CGAL::to_double(s.objective_value())/100) << "\n";
 
-	return;
+    return;
 }
 
 int main() {
-	std::ios_base::sync_with_stdio(false);
+    std::ios_base::sync_with_stdio(false);
 
-	int t;
-	std::cin >> t;
-	for (int i = 0; i < t; ++i)
-		testcase();
+    int t;
+    std::cin >> t;
+    for (int i = 0; i < t; ++i)
+        testcase();
 }

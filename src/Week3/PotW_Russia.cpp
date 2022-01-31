@@ -1,47 +1,70 @@
-#include "vector"
+///4
 #include "iostream"
-
+#include "vector"
+#include "set"
+#include "cmath"
+#include "map"
+#include "algorithm"
+typedef std::vector<std::map<std::pair<int,int>, int>> VM;
+typedef std::vector<VM> VVM;
 typedef std::vector<int> VI;
 typedef std::vector<VI> VVI;
+typedef std::vector<VVI> VVVI;
+typedef std::vector<VVVI> VVVVI;
 
-int f(int start, int end, int people, VI& values, VVI& memo){
-    if(memo[start][end] == -1){
-        if(end-start+1 <= people){
-            memo[start][end] = std::max(values[start], values[end]);
-        }else{
-            int re1 = 0, re2 = 0;
-            for(int i=0; i<end-start-people+1; i++){
-                re1 = std::min(re1, values[start] + f(start + i + 1, end- people + i + 1, people, values, memo));
-                re2 = std::min(re2, values[end] + f(start+i, end-people+i, people, values, memo));
-            }
-            memo[start][end] = std::max(re1, re2);
-        }
+
+std::pair<int,int> cal_single(int status, int x, int m, int k){ // return new status and the number of distince fighter;
+    int distinct = 0;
+    int new_s = (status * 10 + x);
+    int tmp = new_s;
+    std::vector<int> help(k+1, 0);
+    while(tmp!=0){
+        help[tmp%10] = 1;
+        tmp /= 10;
     }
-    return memo[start][end];
+    for(int i=0; i<k+1; i++){
+        if(i !=0 && help[i]==1)
+            distinct++;
+    }
+    return std::make_pair(new_s % (int)std::pow(10, m-1), distinct);
+}
+
+int dp(int start, int m, int len_dif, std::pair<int,int> s, VI& fighters, VVM& memo, int k){
+    if(start == fighters.size()) return 0;
+    if(memo[start][len_dif].find(s) == memo[start][len_dif].end()){
+        double result = 0;
+        // if place on the top
+        auto p = cal_single(s.first, fighters[start], m, k);
+        if(p.second * 1000 - std::pow(2, std::abs(len_dif + 1 - 11)) >= 0){
+            result = std::max(result, p.second * 1000 - std::pow(2, std::abs(len_dif + 1 - 11))
+                                      + dp(start+1, m, len_dif + 1, std::make_pair(p.first, s.second) , fighters, memo, k));
+        }
+        p = cal_single(s.second, fighters[start], m, k);
+        if(p.second * 1000 - std::pow(2, std::abs(len_dif - 1 - 11)) >= 0){
+            result = std::max(result, p.second * 1000 - std::pow(2, std::abs(len_dif - 1 - 11))
+                                      + dp(start+1, m, len_dif - 1, std::make_pair(s.first, p.first), fighters, memo, k));
+        }
+        memo[start][len_dif][s] = (int)result;
+    }
+    return memo[start][len_dif][s];
 }
 void testcase() {
-    int n,m,k; std::cin >> n >> m >> k;
-    VI values(n);
-    for(int i=0; i<n; i++)
-        std::cin >> values[i];
-    if(n<k+1)
-        std::cout << 0 << "\n";
-    else{
-        int re = INT_MAX;
-        VVI memo(n-1, VI(n-1, -1));
-        for(int i=0; i<k+1; i++){
-            re = std::min(re, f(0, n-k-1, m, values, memo));
-        }
-        std::cout << re << "\n";
+    int n,k,m;std::cin >> n >> k >> m;
+    VI fighters(n);
+    for(int i=0; i<n; i++){
+        std::cin >> fighters[i];
+        fighters[i]++;
     }
-	return;
+    VVM memo(n, VM(23));
+    std::cout << dp(0, m, 11,std::make_pair(0,0),fighters, memo, k) << "\n";
+    return;
 }
 
 int main() {
-	std::ios_base::sync_with_stdio(false);
+    std::ios_base::sync_with_stdio(false);
 
-	int t;
-	std::cin >> t;
-	for (int i = 0; i < t; ++i)
-		testcase();
+    int t;
+    std::cin >> t;
+    for (int i = 0; i < t; ++i)
+        testcase();
 }

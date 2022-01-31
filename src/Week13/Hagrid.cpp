@@ -23,27 +23,27 @@ struct node_type {
 
 std::pair<int, int> preprocess(std::vector<node_type> &nodes, int start) {
     int T = 0, N = 1;
-    for (int i = 0; i < nodes[start].children.size(); i++) {
-        auto pair = preprocess(nodes, nodes[start].children[i].index);
-        nodes[start].children[i].T = pair.first + 2 * nodes[start].children[i].t;
-        nodes[start].children[i].N = pair.second;
-        T += nodes[start].children[i].T;
-        N += nodes[start].children[i].N;
+    for(auto& child : nodes[start].children){
+        auto p = preprocess(nodes, child.index);
+        child.T = p.first + 2 * child.t;
+        child.N = p.second;
+        T += child.T;
+        N += child.N;
     }
-    std::sort(nodes[start].children.begin(), nodes[start].children.end(), [](child_type &c1, child_type &c2) {
-        return c1.T * c2.N < c1.N * c2.T;
+    std::sort(nodes[start].children.begin(), nodes[start].children.end(), [](child_type& c1, child_type& c2){
+        return c1.T * c2.N < c2.T * c1.N;
     });
     return std::make_pair(T, N);
 }
 
 long f(std::vector<node_type> &nodes, int start, int time) {
-    long result = nodes[start].gold - time;
-    for (int i = 0; i < nodes[start].children.size(); i++) {
-        result += f(nodes, nodes[start].children[i].index, time + nodes[start].children[i].t);
-        time += nodes[start].children[i].T;
+        long result = nodes[start].gold - time ;
+        for(auto& child : nodes[start].children){
+            result += f(nodes, child.index, time+child.t);
+            time += child.T;    
+        }
+        return result;
     }
-    return result;
-}
 
 void testcase() {
     int n;

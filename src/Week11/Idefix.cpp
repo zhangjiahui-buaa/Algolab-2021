@@ -48,22 +48,14 @@ void testcase() {
         auto h1 = it->first->vertex((it->second+1)%3);
         auto h2 = it->first->vertex((it->second+2)%3);
 
-        int i1 = h1->info();
-        int i2 = h2->info();
+        edges.push_back({h1->info(), h2->info(), t.segment(it).squared_length(), true});
+        int c1 = uf.find_set(h1->info());
+        int c2 = uf.find_set(h2->info());
 
-        K::Point_2 p1 = h1->point();
-        K::Point_2 p2 = h2->point();
-
-        long dis = CGAL::squared_distance(p1,p2);
-        edges.push_back({i1,i2,dis, true});
-
-        if(dis <= s){
-            int c1 = uf.find_set(i1);
-            int c2 = uf.find_set(i2);
-            if(c1!=c2){
-                uf.link(c1,c2);
-                bones_each_tree[uf.find_set(i1)] = bones_each_tree[c1] + bones_each_tree[c2];
-            }
+        if(t.segment(it).squared_length() <= s && c1!=c2){
+            uf.link(c1,c2);
+            int c3 = uf.find_set(h1->info());
+            bones_each_tree[c3] = bones_each_tree[c1] + bones_each_tree[c2];
         }
     }
     int max_bones = *std::max_element(bones_each_tree.begin(), bones_each_tree.end());
@@ -80,7 +72,7 @@ void testcase() {
             int c2 = uf.find_set(edge.to);
             if(c1!=c2){
                 uf.link(c1,c2);
-                int c3 = uf.find_set(c1);
+                int c3 = uf.find_set(edge.from);
                 bones_each_tree[c3] = bones_each_tree[c1] + bones_each_tree[c2];
                 if(bones_each_tree[c3] >= k){
                     min_dis = edge.dis;

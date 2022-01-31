@@ -18,6 +18,12 @@ struct mis_type{
     Triangulation::Vertex_handle v1;
     bool possible;
 };
+struct edge_type{
+    int from;
+    int to;
+    long dis;
+    bool is_tri;
+};
 void process(Triangulation& t, double p){
     int idx = 0;
     for(Triangulation::Vertex_iterator v = t.finite_vertices_begin(); v!=t.finite_vertices_end(); v++) {
@@ -45,19 +51,7 @@ void process(Triangulation& t, double p){
         h2->info().second = uf.find_set(h2->info().first);
     }
 }
-int num(Triangulation& t, long p, std::vector<mis_type>& mis){
-    process(t, p);
-    int count = 0;
-    for(auto & mi : mis){
-        auto s0 = mi.s0;
-        auto s1 = mi.s1;
-        auto h0 = mi.v0;
-        auto h1 = mi.v1;
-        if(4 * CGAL::squared_distance(s0,h0->point()) <= p && 4 * CGAL::squared_distance(s1,h1->point()) <= p && h0->info().second==h1->info().second)
-            count++;
-    }
-    return count;
-}
+
 void testcase() {
     int n,m;
     double p;
@@ -72,41 +66,54 @@ void testcase() {
     int count = 0;
     std::vector<mis_type> mis;
     process(t,p);
+    std::vector<edge_type> edges;
+    for(auto e = t.finite_edges_begin(); e!=t.finite_edges_end(); e++){
+        auto h0 = e->first->vertex((e->second+1)%3);
+        auto h1 = e->first->vertex((e->second+2)%3);
+        edges.push_back({h0->info().first, h1->info().first, (long)t.segment(e).squared_length(), true});
+    }
+    std::sort(edges.begin(), edges.end(), [](edge_type& e1, edge_type& e2){
+        return e1.dis < e2.dis;
+    });
+    long a=0,b=0;
+    boost::disjoint_sets_with_storage<> ufa(n);
+    int ida = 0;
+    boost::disjoint_sets_with_storage<> ufb(n);
+    int idb = 0;
     for(int i=0; i<m; i++){
         int x0,y0,x1,y1;std::cin >> x0 >> y0 >> x1 >> y1;
         K::Point_2 s0(x0,y0);
         K::Point_2 s1(x1,y1);
         auto h0 = t.nearest_vertex(s0);
         auto h1 = t.nearest_vertex(s1);
-        if((4 * CGAL::squared_distance(s0,h0->point()) <= p) && (4 * CGAL::squared_distance(s1,h1->point()) <= p) && (h0->info().second==h1->info().second)){
+        long dis = 4 * std::max(CGAL::squared_distance(s0,h0->point()), CGAL::squared_distance(s1,h1->point()));
+        if(dis <= p && (h0->info().second==h1->info().second)){
             std::cout << "y";
-            count++;
+            b = std::max(b, dis);
+            while(idb < edges.size() && (edges[idb].dis <= b || ufb.find_set(h0->info().first) != ufb.find_set(h1->info().first))){
+                int c0 = ufb.find_set(edges[idb].from);
+                int c1 = ufb.find_set(edges[idb].to);
+                ufb.link(c0,c1);
+                b = std::max(b, edges[idb].dis);
+                idb++;
+            }
             mis.push_back({s0,s1,h0,h1,true});
         }
         else{
             std::cout << "n";
             mis.push_back({s0,s1,h0,h1,false});
         }
+        a = std::max(a, dis);
+        while(ida < edges.size() && (edges[ida].dis <= a || ufa.find_set(h0->info().first) != ufa.find_set(h1->info().first))){
+            int c0 = ufa.find_set(edges[ida].from);
+            int c1 = ufa.find_set(edges[ida].to);
+            ufa.link(c0,c1);
+            a = std::max(a, edges[ida].dis);
+            ida++;
+        }
     }
     std::cout << "\n";
-    long left = 0, right = LONG_MAX;
-    while(left < right){
-        long pivot = (left+right)/2;
-        if(num(t, pivot, mis) < m)
-            left = pivot + 1;
-        else
-            right = pivot;
-    }
-    std::cout << left << "\n";
-    left =0; right = LONG_MAX;
-    while(left < right){
-        long pivot = (left+right)/2;
-        if(num(t, pivot, mis) < count)
-            left = pivot + 1;
-        else
-            right = pivot;
-    }
-    std::cout << left << "\n";
+    std::cout << a << "\n" << b << "\n";
     return;
 }
 

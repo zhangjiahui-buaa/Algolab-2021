@@ -1,4 +1,3 @@
-///4
 #include "iostream"
 // BGL includes
 #include <boost/graph/adjacency_list.hpp>
@@ -59,25 +58,28 @@ void testcase() {
         s--; t--;
         if(vertex_map[s].find(d) == vertex_map[s].end()){
             vertex_desc v = boost::add_vertex(g);
-            vertex_map[s].insert(std::make_pair(d,v));
+            vertex_map[s].insert({d, v});
         }
         if(vertex_map[t].find(a) == vertex_map[t].end()){
             vertex_desc v = boost::add_vertex(g);
-            vertex_map[t].insert(std::make_pair(a,v));
+            vertex_map[t].insert({a,v});
         }
-        adder.add_edge(vertex_map[s][d], vertex_map[t][a], 1, -p + MAXP * (a-d));
+        adder.add_edge(vertex_map[s][d], vertex_map[t][a], 1, -p + (a-d)*MAXP);
     }
     vertex_desc v_source = boost::add_vertex(g);
     vertex_desc v_target = boost::add_vertex(g);
+
     for(int i=0; i<S; i++){
-        adder.add_edge(v_source,vertex_map[i][ST], initial[i], 0);
         auto it = vertex_map[i].begin();
-        auto it_next = vertex_map[i].begin(); it_next++;
-        while(it_next != vertex_map[i].end()){
-            adder.add_edge(it->second, it_next->second, INT_MAX, MAXP * (it_next->first - it->first));
-            it++; it_next++;
+        adder.add_edge(v_source, it->second, initial[i], 0);
+        auto it_next = vertex_map[i].begin();
+        it_next++;
+        while(it_next!= vertex_map[i].end()){
+            adder.add_edge(it->second, it_next->second, INT_MAX, MAXP*(it_next->first - it->first));
+            it++;
+            it_next++;
         }
-        adder.add_edge(vertex_map[i][FT], v_target, INT_MAX, 0);
+        adder.add_edge(it->second, v_target, INT_MAX, 0);
     }
     boost::successive_shortest_path_nonnegative_weights(g, v_source, v_target);
     int cost = boost::find_flow_cost(g);

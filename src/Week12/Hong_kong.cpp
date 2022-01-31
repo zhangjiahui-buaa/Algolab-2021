@@ -18,38 +18,41 @@ typedef CGAL::Delaunay_triangulation_2<K, Tds> Triangulation;
 
 const K::FT max_value = K::FT(int64_t(1)<<53) * K::FT(int64_t(1)<<53);
 void preprocess(Triangulation &t){
-    typedef std::pair<K::FT, Triangulation::Face_handle> pq_pair;
-    const auto comparator = [](const pq_pair &o1, const pq_pair &o2) {return o1.first < o2.first;};
-    std::priority_queue<pq_pair, std::vector<pq_pair>, decltype(comparator)> q(comparator);
 
-    for(Triangulation::Face_handle f = t.all_faces_begin(); f!=t.all_faces_end(); f++){
+    typedef std::pair<Triangulation::Face_handle, K::FT> item;
+    auto cmp = [](item& i1, item& i2){
+        return i1.second < i2.second;
+    };
+    std::priority_queue<item, std::vector<item>, decltype(cmp)> pq(cmp);
+        for(auto f = t.all_faces_begin(); f!=t.all_faces_end(); f++){
         if(t.is_infinite(f)){
-            q.emplace(max_value,f);
+            pq.push({f, max_value});
         }else{
-            const K::FT dis = CGAL::squared_radius(f->vertex(0)->point(), f->vertex(1)->point(), f->vertex(2)->point());
-            q.emplace(dis, f);
+            pq.push({f, CGAL::squared_radius(f->vertex(0)->point(), f->vertex(1)->point(), f->vertex(2)->point())}); 
         }
+        f->info() = -1;
     }
 
-    while(!q.empty()){
-        auto p = q.top(); q.pop();
-        const auto max_len = p.first;
-        auto handle = p.second;
+    while(!pq.empty()){
+        auto top = pq.top();
+        pq.pop();
+        auto handle = top.first;
+        auto max_dis = top.second;
+        if(handle->info() != -1) continue;
 
-        if(handle->info()!=0) continue;
-
-        handle->info()=max_len;
+        handle->info() = max_dis;
 
         for(int i=0; i<3; i++){
-            const auto neighbour = handle->neighbor(i);
-
-            if(t.is_infinite(neighbour) || neighbour->info()!=0) continue;
-            auto v1 = handle->vertex((i+1)%3)->point();
-            auto v2 = handle->vertex((i+2)%3)->point();
-            const K::FT dis = std::min(CGAL::squared_distance(v1,v2), max_len);
-            q.emplace(dis, neighbour);
+            auto nei = handle->neighbor(i);
+            if(!t.is_infinite(nei) && nei->info() == -1){
+                auto p1 = handle->vertex((i+1)%3)->point();
+                auto p2 = handle->vertex((i+2)%3)->point();
+                pq.push_back({nei, std::min(CGAL::squared_distance(p1,p2), max_dis)});
+            }
         }
+        
     }
+
 }
 
 void testcase(){

@@ -22,54 +22,52 @@ struct q_type{
 };
 bool is_valid(Triangulation& t, long r){
     int idx = 0;
-    for(auto v= t.finite_vertices_begin(); v!=t.finite_vertices_end(); v++)
+    for(auto v = t.finite_vertices_begin(); v!=t.finite_vertices_end(); v++){
         v->info() = {-1, idx++};
-
-    std::queue<q_type> q;
-    for(auto v= t.finite_vertices_begin(); v!=t.finite_vertices_end(); v++){
+    }
+    std::queue<Triangulation::Vertex_handle> q;
+    for(auto v = t.finite_vertices_begin(); v!= t.finite_vertices_end(); v++){
         if(v->info().color == -1){
-            q.push({v, 0});
+            q.push(v);
             int cur_color = 0;
             while(!q.empty()){
                 int s = q.size();
                 for(int i=0; i<s; i++){
-                    auto top = q.front();
+                    auto handle = q.front();
                     q.pop();
-                    auto handle = top.v;
                     if(handle->info().color != -1){
-                        if(handle->info().color != cur_color)
+                        if(handle->info().color == cur_color)
+                            continue;
+                        else
                             return false;
-                        else continue;
                     }
                     handle->info().color = cur_color;
-                    Triangulation::Vertex_circulator c = t.incident_vertices(handle);
+
+                    auto c = t.incident_vertices(handle);
                     if(!c.is_empty()){
                         do{
-                            if(!t.is_infinite(c) && CGAL::squared_distance(c->point(), handle->point()) <= r*r){
-                                q.push({c, 0});
-                            }
+                            if(!t.is_infinite(c) && CGAL::squared_distance(c->point(), handle->point()) <= r*r)
+                                q.push(c);
                         }while(++c != t.incident_vertices(handle));
                     }
+
                 }
-                cur_color = 1 - cur_color;
+                cur_color = 1-cur_color;
             }
         }
     }
-    for(auto v= t.finite_vertices_begin(); v!=t.finite_vertices_end(); v++){
-        Triangulation::Vertex_circulator c = t.incident_vertices(v);
+    for(auto v = t.finite_vertices_begin(); v!= t.finite_vertices_end(); v++){
+        auto c = t.incident_vertices(v);
         if(!c.is_empty()){
             do{
                 if(!t.is_infinite(c) && CGAL::squared_distance(v->point(), c->point()) <= r*r){
-                    Triangulation::Vertex_circulator nc = t.incident_vertices(c);
-                    if(!nc.is_empty()){
+                    auto c2 = t.incident_vertices(c);
+                    if(!c2.is_empty()){
                         do{
-                            if(!t.is_infinite(nc) && nc!= v &&  CGAL::squared_distance(c->point(), nc->point()) <= r*r){
-                                if(CGAL::squared_distance(v->point(), nc->point()) <= r*r)
-                                    return false;
-                            }
-                        }while(++nc != t.incident_vertices(c));
+                            if(!t.is_infinite(c2) && c2 != v && CGAL::squared_distance(v->point(), c2->point()) <= r*r && CGAL::squared_distance(c->point(), c2->point()) <= r*r)
+                                return false;
+                        }while(++c2 != t.incident_vertices(c));
                     }
-
                 }
             }while(++c != t.incident_vertices(v));
         }

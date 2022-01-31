@@ -62,27 +62,30 @@ void testcase() {
     }
     int left = 0, right = INT_MAX;
     while(left < right){
-        int pivot = (left+right)/2;
+        int pivot = left + (right-left)/2;
         graph g(a+c*s);
         edge_adder adder(g);
         vertex_desc v_source = boost::add_vertex(g);
         vertex_desc v_target = boost::add_vertex(g);
         for(int i=0; i<a; i++){
+            adder.add_edge(v_source, i, 1, true);
             for(int j=0; j<s; j++){
                 for(int k=0; k<c; k++){
-                    if(dis[i][j] != INT_MAX && dis[i][j]+(k+1)*d <= pivot)
+                    if(dis[i][j] != INT_MAX && dis[i][j] + (k+1) * d<= pivot){
                         adder.add_edge(i, a+k*s+j, 1, true);
+                    }
                 }
             }
-            adder.add_edge(v_source, i, 1, true);
         }
-        for(int j=0; j<s; j++)
-            for(int k=0; k<c; k++)
+        for(int j=0; j<s; j++){
+            for(int k=0; k<c; k++){
                 adder.add_edge(a+k*s+j, v_target, 1, true);
+            }
+        }
         long flow = boost::push_relabel_max_flow(g, v_source, v_target);
-        if(flow==a)
+        if(flow == a)
             right = pivot;
-        else
+        else 
             left = pivot + 1;
     }
     std::cout << left << "\n";
